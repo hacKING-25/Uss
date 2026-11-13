@@ -3,17 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <link rel="icon" href="data:,">
 <title>Duo chat</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('duo-theme');
+    var theme = saved === 'light' || saved === 'dark'
+      ? saved
+      : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.dataset.theme = theme;
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+})();
+</script>
 <style>
   * { box-sizing: border-box; }
   html, body { height: 100%; }
+  :root, [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1116;
+    --app-bg: #161b22;
+    --border: #232b36;
+    --border-strong: #303a47;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --btn-bg: #1d2430;
+    --btn-hover: #253040;
+    --bubble-them: #222a35;
+    --bubble-me: #1f4fd8;
+    --bubble-me-text: #fff;
+    --input-bg: #0e1116;
+    --system-bg: #1b222c;
+    --emojis-bg: #131820;
+    --notice-text: #d29922;
+    --notice-bg: #2a2113;
+    --notice-border: #3a2f18;
+    --accent: #3b6cf0;
+    --delivered: #7ee787;
+    --online: #3fb950;
+    --waiting: #d29922;
+    --danger: #f85149;
+  }
+  [data-theme="light"] {
+    color-scheme: light;
+    --bg: #eef1f5;
+    --app-bg: #ffffff;
+    --border: #e2e6ec;
+    --border-strong: #d3d9e1;
+    --text: #1c2128;
+    --muted: #667085;
+    --btn-bg: #f1f3f6;
+    --btn-hover: #e6eaf0;
+    --bubble-them: #eef1f5;
+    --bubble-me: #1f4fd8;
+    --bubble-me-text: #fff;
+    --input-bg: #ffffff;
+    --system-bg: #f1f3f6;
+    --emojis-bg: #fafbfc;
+    --notice-text: #8a5a00;
+    --notice-bg: #fff7e0;
+    --notice-border: #f2e2b6;
+    --accent: #1f4fd8;
+    --delivered: #1a7f37;
+    --online: #1a7f37;
+    --waiting: #9a6700;
+    --danger: #cf222e;
+  }
   body {
     margin: 0;
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: #0e1116;
-    color: #e6edf3;
+    background: var(--bg);
+    color: var(--text);
   }
   button, input { font: inherit; }
   .app {
@@ -22,8 +85,8 @@
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    background: #161b22;
-    border-inline: 1px solid #232b36;
+    background: var(--app-bg);
+    border-inline: 1px solid var(--border);
   }
   header {
     display: flex;
@@ -31,40 +94,60 @@
     justify-content: space-between;
     gap: 12px;
     padding: 10px 14px;
-    border-bottom: 1px solid #232b36;
+    border-bottom: 1px solid var(--border);
   }
   .peer { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .peer strong { display: block; font-size: 15px; }
   .peer small {
     display: block;
     font-size: 12px;
-    color: #8b98a5;
+    color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: #8b98a5; flex: none; }
-  .dot.online { background: #3fb950; box-shadow: 0 0 0 3px rgba(63, 185, 80, .18); }
-  .dot.waiting { background: #d29922; }
-  .dot.connecting { background: #8b98a5; animation: pulse 1s infinite alternate; }
-  .dot.offline, .dot.full { background: #f85149; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.online { background: var(--online); box-shadow: 0 0 0 3px rgba(63, 185, 80, .18); }
+  .dot.waiting { background: var(--waiting); }
+  .dot.connecting { background: var(--muted); animation: pulse 1s infinite alternate; }
+  .dot.offline, .dot.full { background: var(--danger); }
   @keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
+  .actions { display: flex; align-items: center; gap: 8px; flex: none; }
   #invite {
-    border: 1px solid #303a47;
-    background: #1d2430;
-    color: #e6edf3;
+    border: 1px solid var(--border-strong);
+    background: var(--btn-bg);
+    color: var(--text);
     padding: 7px 12px;
     border-radius: 9px;
     cursor: pointer;
     white-space: nowrap;
   }
-  #invite:hover { background: #253040; }
+  #invite:hover { background: var(--btn-hover); }
+  #themeBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    background: var(--btn-bg);
+    color: var(--text);
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  #themeBtn:hover { background: var(--btn-hover); }
+  #themeBtn svg { width: 18px; height: 18px; }
+  #themeBtn .icon-sun { display: none; }
+  #themeBtn .icon-moon { display: block; }
+  [data-theme="dark"] #themeBtn .icon-sun { display: block; }
+  [data-theme="dark"] #themeBtn .icon-moon { display: none; }
   .notice {
     padding: 7px 14px;
     font-size: 12px;
-    color: #d29922;
-    background: #2a2113;
-    border-bottom: 1px solid #3a2f18;
+    color: var(--notice-text);
+    background: var(--notice-bg);
+    border-bottom: 1px solid var(--notice-border);
   }
   .notice[hidden] { display: none; }
   .log {
@@ -79,9 +162,9 @@
   .system {
     align-self: center;
     font-size: 12px;
-    color: #8b98a5;
-    background: #1b222c;
-    border: 1px solid #232b36;
+    color: var(--muted);
+    background: var(--system-bg);
+    border: 1px solid var(--border);
     padding: 4px 10px;
     border-radius: 999px;
     margin: 4px 0;
@@ -93,56 +176,60 @@
     max-width: 78%;
     padding: 7px 11px 8px;
     border-radius: 14px;
-    background: #222a35;
+    background: var(--bubble-them);
     overflow-wrap: anywhere;
   }
-  .row.me .bubble { background: #1f4fd8; border-bottom-right-radius: 4px; }
+  .row.me .bubble {
+    background: var(--bubble-me);
+    color: var(--bubble-me-text);
+    border-bottom-right-radius: 4px;
+  }
   .row.them .bubble { border-bottom-left-radius: 4px; }
   .text { white-space: pre-wrap; }
   .meta { margin-left: 8px; font-size: 11px; opacity: .65; white-space: nowrap; }
   .status { margin-left: 5px; font-size: 11px; white-space: nowrap; }
   .status.queued { opacity: .6; }
   .status.sent { opacity: .75; }
-  .status.delivered { color: #7ee787; opacity: 1; }
+  .status.delivered { color: var(--delivered); opacity: 1; }
   form#composer {
     display: flex;
     gap: 8px;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    border-top: 1px solid #232b36;
+    border-top: 1px solid var(--border);
   }
   #emojiBtn, #send {
-    border: 1px solid #303a47;
-    background: #1d2430;
-    color: #e6edf3;
+    border: 1px solid var(--border-strong);
+    background: var(--btn-bg);
+    color: var(--text);
     border-radius: 10px;
     padding: 0 12px;
     height: 42px;
     cursor: pointer;
   }
   #emojiBtn { font-size: 19px; }
-  #send { background: #1f4fd8; border-color: #1f4fd8; font-weight: 600; }
+  #send { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   #input {
     flex: 1;
     min-width: 0;
     height: 42px;
     border-radius: 10px;
-    border: 1px solid #303a47;
-    background: #0e1116;
-    color: #e6edf3;
+    border: 1px solid var(--border-strong);
+    background: var(--input-bg);
+    color: var(--text);
     padding: 0 12px;
     outline: none;
     font-size: 16px;
   }
-  #input:focus { border-color: #3b6cf0; }
+  #input:focus { border-color: var(--accent); }
   .emojis {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
     gap: 2px;
     padding: 8px 12px;
-    border-top: 1px solid #232b36;
+    border-top: 1px solid var(--border);
     max-height: 160px;
     overflow-y: auto;
-    background: #131820;
+    background: var(--emojis-bg);
   }
   .emojis button {
     border: 0;
@@ -152,7 +239,7 @@
     cursor: pointer;
     border-radius: 8px;
   }
-  .emojis button:hover { background: #222a35; }
+  .emojis button:hover { background: var(--bubble-them); }
   .emojis[hidden] { display: none; }
 </style>
 </head>
@@ -166,7 +253,18 @@
         <small id="peerStatus">Connecting…</small>
       </div>
     </div>
-    <button id="invite" type="button">Invite</button>
+    <div class="actions">
+      <button id="themeBtn" type="button" aria-label="Switch theme" title="Switch theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button id="invite" type="button">Invite</button>
+    </div>
   </header>
 
   <div id="notice" class="notice" hidden></div>
@@ -204,6 +302,22 @@
   const emojiPanel = document.getElementById('emojis');
   const inviteBtn = document.getElementById('invite');
   const notice = document.getElementById('notice');
+  const themeBtn = document.getElementById('themeBtn');
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    const label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+    themeBtn.setAttribute('aria-label', label);
+    themeBtn.title = label;
+  }
+
+  applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+
+  themeBtn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    try { localStorage.setItem('duo-theme', next); } catch {}
+  });
 
   const EMOJIS = [
     '😀', '😂', '😊', '😍', '😘', '😎', '🤔', '😅', '😢', '😭', '😡', '🥳',
