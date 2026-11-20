@@ -4,9 +4,10 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { WebSocketServer } = require('ws');
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT =  3001;
 const MAX_PEERS = 2;
 const MAX_TEXT = 2000;
+const MAX_AUDIO = 2.5 * 1024 * 1024;
 const OPEN = 1;
 
 const indexHtml = fs.readFileSync(path.join(__dirname, 'public', 'index.html'));
@@ -28,7 +29,7 @@ const server = http.createServer((req, res) => {
   res.end('Not found');
 });
 
-const wss = new WebSocketServer({ noServer: true, maxPayload: 8 * 1024 });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 4 * 1024 * 1024 });
 const rooms = new Map();
 
 server.on('upgrade', (req, socket, head) => {
@@ -89,6 +90,14 @@ wss.on('connection', (ws) => {
       send(ws, { type: 'sent', id });
       for (const p of peersOf(ws.room, ws)) {
         send(p, { type: 'msg', id, text, ts: Date.now() });
+      }
+    } else if (msg.type === 'voice') {
+      const id = typeof msg.id === 'string' ? msg.id.slice(0, 64) : '';
+      const audio = typeof msg.audio === 'string' ? msg.audio : '';
+      if (!id || !audio || audio.length > MAX_AUDIO || !/^data:audio\//.test(audio)) return;
+      send(ws, { type: 'sent', id });
+      for (const p of peersOf(ws.room, ws)) {
+        send(p, { type: 'voice', id, audio, ts: Date.now() });
       }
     } else if (msg.type === 'ack' && Array.isArray(msg.ids)) {
       const ids = msg.ids.filter((v) => typeof v === 'string').slice(0, 100);

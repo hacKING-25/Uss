@@ -197,7 +197,7 @@
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
   }
-  #emojiBtn, #send {
+  #emojiBtn, #voiceBtn, #send {
     border: 1px solid var(--border-strong);
     background: var(--btn-bg);
     color: var(--text);
@@ -207,6 +207,8 @@
     cursor: pointer;
   }
   #emojiBtn { font-size: 19px; }
+  #voiceBtn { font-size: 18px; }
+  #voiceBtn.recording { background: var(--danger); border-color: var(--danger); color: #fff; }
   #send { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   #input {
     flex: 1;
@@ -275,6 +277,7 @@
 
   <form id="composer" autocomplete="off">
     <button id="emojiBtn" type="button" aria-label="Insert emoji">🙂</button>
+    <button id="voiceBtn" type="button" aria-label="Record voice message">🎤</button>
     <input id="input" placeholder="Message…" maxlength="2000" aria-label="Message">
     <button id="send" type="submit">Send</button>
   </form>
@@ -299,6 +302,7 @@
   const dot = document.getElementById('dot');
   const peerStatus = document.getElementById('peerStatus');
   const emojiBtn = document.getElementById('emojiBtn');
+  const voiceBtn = document.getElementById('voiceBtn');
   const emojiPanel = document.getElementById('emojis');
   const inviteBtn = document.getElementById('invite');
   const notice = document.getElementById('notice');
@@ -389,6 +393,38 @@
     scrollDown();
   }
 
+  function addVoiceMessage(audio, ts, mine, id) {
+    const row = document.createElement('div');
+    row.className = 'row ' + (mine ? 'me' : 'them');
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+
+    const player = document.createElement('audio');
+    player.controls = true;
+    player.src = audio;
+    player.preload = 'metadata';
+
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = fmtTime(ts);
+
+    bubble.append(player, meta);
+
+    if (mine) {
+      const status = document.createElement('span');
+      status.className = 'status queued';
+      status.textContent = '🕘';
+      status.title = 'Queued';
+      bubble.appendChild(status);
+      if (id) pending.set(id, status);
+    }
+
+    row.appendChild(bubble);
+    logEl.appendChild(row);
+    scrollDown();
+  }
+
   function ack(ids) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'ack', ids: Array.isArray(ids) ? ids : [ids] }));
@@ -436,6 +472,10 @@
         addMessage(m.text, m.ts || Date.now(), false);
         ack(m.id);
         break;
+      case 'voice':
+        addVoiceMessage(m.audio, m.ts || Date.now(), false);
+        ack(m.id);
+        break;
       case 'full':
         setStatus('full');
         break;
@@ -447,7 +487,11 @@
     while (outbox.length) {
       const item = outbox[0];
       try {
-        ws.send(JSON.stringify({ type: 'msg', id: item.id, text: item.text }));
+        if (item.kind === 'voice') {
+          ws.send(JSON.stringify({ type: 'voice', id: item.id, audio: item.audio }));
+        } else {
+          ws.send(JSON.stringify({ type: 'msg', id: item.id, text: item.text }));
+        }
       } catch {
         return;
       }
@@ -492,9 +536,56 @@
       : Date.now().toString(36) + Math.random().toString(36).slice(2);
 
     addMessage(text, Date.now(), true, id);
-    outbox.push({ id, text });
+    outbox.push({ id, kind: 'text', text });
     flush();
   }
+
+  let mediaRecorder = null;
+  let recordingChunks = [];
+  let isRecording = false;
+
+  async function toggleVoice() {
+    if (isRecording && mediaRecorder) {
+      mediaRecorder.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recordingChunks = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recordingChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        isRecording = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.textContent = '🎤';
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(recordingChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        if (!blob.size) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result;
+          const id = typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : Date.now().toString(36) + Math.random().toString(36).slice(2);
+          addVoiceMessage(dataUrl, Date.now(), true, id);
+          outbox.push({ id, kind: 'voice', audio: dataUrl });
+          flush();
+        };
+        reader.readAsDataURL(blob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      voiceBtn.classList.add('recording');
+      voiceBtn.textContent = '⏹';
+    } catch (e) {
+      addSystem('Microphone access denied or unavailable');
+    }
+  }
+
+  voiceBtn.addEventListener('click', toggleVoice);
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
